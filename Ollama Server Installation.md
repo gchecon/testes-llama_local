@@ -259,5 +259,3 @@ Este manual cobre:
 2. Instalação e configuração do Ollama usando Docker.
 3. Configuração do Ollama como serviço `systemd`.
 4. Testes para verificar o servidor Ollama.
-
-
