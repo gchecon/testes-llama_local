@@ -106,28 +106,36 @@ def main():
         except Exception as e:
             st.error(f"Erro ao processar a pergunta: {str(e)}")
 ```
+
 Attachments:
 Attachment Name: get_ollama_models definition:
 Attachments Kind: Visible
 Attachments Text:
+
 ```python
 def get_ollama_models():
 ```
+
 Attachment Name: open_folder_dialog definition:
 Attachments Kind: Visible
 Attachments Text:
+
 ```python
 def open_folder_dialog():
 ```
+
 Attachment Name: update_folder_history definition:
 Attachments Kind: Visible
 Attachments Text:
+
 ```python
 def update_folder_history(folder):
 ```
+
 Attachment Name: process_pdf definition:
 Attachments Kind: Visible
 Attachments Text:
+
 ```python
 def process_pdf(file_path, vectorstore):
     # Calcular o hash do arquivo
@@ -137,20 +145,23 @@ def process_pdf(file_path, vectorstore):
     # Atualizar os metadados dos chunks
     # Adicionar os chunks ao vectorstore
 ```
+
 Attachment Name: main definition:
 Attachments Kind: Visible
 Attachments Text:
+
 ```python
 def main():
     # Obter modelos disponíveis
 ```
+
 Attachment Name: is_file_in_vectorstore definition:
 Attachments Kind: Visible
 Attachments Text:
+
 ```python
 def is_file_in_vectorstore(file_hash, db_path):
 ```
-
 
 Assistant: 
 Esse código Python descreve a implementação principal de uma aplicação baseada em documentos que utiliza modelos de linguagem natural (LLMs - Large Language Models) para interagir com o usuário em um formato de perguntas e respostas, além de processar documentos em formato PDF. O código explora o framework **Streamlit** para a interface gráfica (GUI) e integração com modelos de Machine Learning. O propósito principal é permitir que o usuário processe documentos PDF, selecione modelos de linguagem, e realize interações em um formato de chatbot. Vamos discutir as seções principais do código:
@@ -248,6 +259,7 @@ for message in st.session_state.messages:
 ```
 
 **Fluxo:**
+
 1. As mensagens entre o usuário e o assistente são armazenadas em `st.session_state.messages`.
 2. Esse histórico é exibido reutilizando "blocos" de mensagens em estilo de chat: `"role"` define o remetente (usuário ou assistente) enquanto `"content"` armazena o texto.
 
@@ -335,10 +347,10 @@ O programa não está funcional e, pelo que pude entender, o parâmetro llm de `
 Attachment Name: Selection
 Attachments Kind: Visible
 Attachments Text:
+
 ```
 question_answer_chain
 ```
-
 
 Assistant: 
 Sua suspeita tem fundamento, porque a mensagem sugere que o parâmetro `llm` de `question_answer_chain` pode não estar compatível com o objeto do tipo `OllamaLLM` criado anteriormente no código. Isso é algo a se investigar, pois qualquer incompatibilidade no tipo ou estrutura de `llm` que é passado para `create_stuff_documents_chain` resultará em erros durante a execução.
@@ -366,12 +378,12 @@ Sua suspeita tem fundamento, porque a mensagem sugere que o parâmetro `llm` de 
 
 3. **Depure a chamada:**
    Adicione logs para verificar o que está sendo passado para o parâmetro `llm`:
-
+   
    ```python
    print(f"Tipo de LLM: {type(llm)}")
    print(f"LLM: {llm}")
    ```
-
+   
    Isso ajuda a verificar se o tipo está correto antes da chamada.
 
 4. **Adapte ou crie um wrapper:**
@@ -396,7 +408,7 @@ Se for confirmado que `OllamaLLM` não é compatível, crie uma classe adaptador
 class CompatibleLLM:
     def __init__(self, ollama_llm):
         self.model = ollama_llm
-    
+
     def gerar_resposta(self, prompt):
         # Converte para o formato esperado pela função question_answer_chain
         return self.model.some_method_for_prompt(prompt)
@@ -422,80 +434,81 @@ Em essência, a memória serve para manter o contexto da conversa durante todo o
 
 1. **Criação de um Adaptador para Compatibilidade com o Pipeline**
    Para usar o `OllamaLLM` como fonte de LLM em um chatbot com memória, precisamos garantir que seja compatível com estruturas como `ConversationBufferMemory`, que mantém o histórico de mensagens. Isso pode ser feito criando um adaptador entre o `OllamaLLM` e o encadeamento de perguntas e respostas (`question_answer_chain`).
-
+   
    Por exemplo, o adaptador poderia implementar um método padrão para lidar com entradas e saídas no formato esperado:
-
+   
    ```python
    class CustomLLM:
        def __init__(self, llm_instance):
            self.llm = llm_instance
-
+   
        def __call__(self, prompt):
            # Método usado para obter saída do modelo OllamaLLM
            return self.llm.run(prompt)
    ```
-
+   
    O método `__call__` pode ser usado em estruturas que esperam uma função como entrada para o LLM.
 
 ---
 
 2. **Uso de `ConversationBufferMemory`**
    O **`ConversationBufferMemory`** é uma implementação comum para manter o histórico de mensagens em chatbots. A integração dele aqui permitiria introduzir a memória ao chat. A memória geralmente contém:
+   
    - As mensagens do usuário (perguntas).
    - As respostas do assistente (modelo LLM).
    - Qualquer outro dado intermediário necessário para o funcionamento do modelo.
-
+   
    O fluxo básico seria algo assim:
-
+   
    ```python
    from langchain.memory import ConversationBufferMemory
    
    # Inicializa a memória para o contexto
    memory = ConversationBufferMemory(return_messages=True)
-
+   
    # Exemplo de histórico de mensagens
    prompt = "Qual é o capital da França?"
    memory.chat_memory.add_user_message(prompt)
-
+   
    # Exemplo de resposta do assistente
    response = "A capital da França é Paris."
    memory.chat_memory.add_ai_message(response)
    ```
-
+   
    Aqui, o `ConversationBufferMemory` vai armazenar as mensagens enviadas e recebidas e pode ser usado no pipeline de recuperação.
 
 ---
 
 3. **Integração com o Pipeline de LangChain**
    Se você está usando a biblioteca LangChain, ela permite criar um pipeline integrado para buscar informações contextuais de uma base vetorial e combinar isso com um LLM para responder perguntas. Isso pode ser ajustado para funcionar com memória da seguinte forma:
-
+   
    ```python
    from langchain.chains import ConversationalRetrievalChain
    from langchain.vectorstores import Chroma
    from langchain.embeddings import HuggingFaceEmbeddings
    from langchain.llms.base import BaseLLM
-
+   
    # Instalação da base vetorial
    embeddings = HuggingFaceEmbeddings(model_name="distilbert-base-uncased")
    vectorstore = Chroma(persist_directory="vetor_db/", embedding_function=embeddings)
-
+   
    # Criação do adaptador para OllamaLLM
    class OllamaAdapter(BaseLLM):
        def __init__(self, ollama_instance):
            self.ollama = ollama_instance
-       
+   
        def _call(self, prompt, stop=None):
            # Chama o modelo do Ollama e retorna resposta
            return self.ollama.run(prompt)
-
+   
        @property
        def _identifying_params(self):
            return {"name_of_model": "ollama"}
-
+   
    # Instanciando o modelo
    ollama_instance = OllamaLLM(model="my_local_llm", base_url="http://localhost:11434")
    llm = OllamaAdapter(ollama_instance)
-
+   
    # Construção do pipeline com memória
    memory = ConversationBufferMemory(return_messages=True)
    retriever_chain = ConversationalRetrievalChain.from_llm(
@@ -504,8 +517,9 @@ Em essência, a memória serve para manter o contexto da conversa durante todo o
        memory=memory
    )
    ```
-
+   
    Nesse caso:
+   
    - O objeto `vectorstore` é usado para acessar os embeddings das consultas.
    - O `ConversationBufferMemory` armazena o histórico da conversa.
    - O adaptador `OllamaAdapter` ajusta o modelo local `OllamaLLM` para integrar-se com o pipeline.
@@ -514,75 +528,75 @@ Em essência, a memória serve para manter o contexto da conversa durante todo o
 
 4. **Implementando o Chatbot**
    Após configurar o pipeline, você pode criar a funcionalidade do chatbot. A interação típica seria algo como:
-
+   
    ```python
    # Entrada do usuário
    user_input = "Quais documentos foram processados?"
-
+   
    # Recupera resposta processando o histórico e a consulta
    response = retriever_chain.run(user_input)
-
+   
    # Imprime a resposta (ou exibe na interface)
    print(response)
    ```
-
+   
    Isso utiliza o retriever junto com o histórico armazenado e o LLAM para produzir respostas de forma contextualizada.
 
 ---
 
 5. **Uso Direto Sem LangChain**
    Se você preferir não usar o LangChain e criar uma solução mais direta, o controle do histórico e da chamada ao modelo LLM pode ser feito manualmente:
-
+   
    ```python
    class ChatWithMemory:
        def __init__(self, llm):
            self.llm = llm
            self.memory = []
-
+   
        def add_message(self, role, message):
            self.memory.append({"role": role, "message": message})
-
+   
        def generate_response(self, prompt):
            # Adicionar pergunta do usuário na memória
            self.add_message("user", prompt)
-
+   
            # Gerar histórico formatado
            context = "\n".join(
                f"{m['role']}: {m['message']}"
                for m in self.memory
            )
-
+   
            # Chamada ao modelo com o contexto completo
            full_prompt = f"{context}\nassistant:"
            response = self.llm.run(full_prompt)
-
+   
            # Adicionar à memória a resposta gerada
            self.add_message("assistant", response)
            return response
    ```
-
+   
    **Uso:**
-
+   
    ```python
    # Instanciar o chatbot com memória
    chatbot = ChatWithMemory(OllamaLLM(model="my_local_llm", base_url="http://localhost:11434"))
-
+   
    # Enviar uma pergunta
    pergunta = "Quem descobriu o Brasil?"
    resposta = chatbot.generate_response(pergunta)
-
+   
    print(f"Resposta: {resposta}")
    ```
-
+   
    Esse método mantém toda a memória internamente e, em cada interação, passa o histórico completo junto com a consulta ao LLM.
 
 ---
 
 ### **Resumo**
+
 Para implementar um chatbot funcional com memória usando o `ollama-server`, você tem duas abordagens principais:
 
 1. **Usar LangChain** para simplificar a integração, criando um pipeline com `ConversationBufferMemory` e adaptando o LLM local (`OllamaLLM`) para o formato esperado.
 2. **Implementar um controle manual do histórico**, mantendo e passando mensagens concatenadas para o LLM.
 
 Ambas as abordagens funcionam bem, mas a escolha depende da complexidade do projeto. A integração com LangChain adiciona flexibilidade e reutilização de componentes prontos, enquanto o controle manual oferece mais controle sobre a lógica.
-
