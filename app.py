@@ -11,6 +11,8 @@ from langchain.memory import ConversationBufferMemory
 from langchain_ollama import OllamaLLM  # Atualizado para a nova biblioteca Ollama
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chains.question_answering import load_qa_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains import create_retrieval_chain
 import requests
 import tkinter as tk
 from tkinter import filedialog
@@ -243,6 +245,7 @@ def main():
         if "llm_instance" not in st.session_state or model != st.session_state.llm_instance.model:
             try:
                 st.session_state.llm_instance = OllamaLLM(model=model, base_url=OLLAMA_HOST)
+                print(f'1 - LLM criada: {st.session_state.llm_instance}')
                 st.session_state.memory = ConversationBufferMemory(return_messages=True)
                 st.success(f"Modelo configurado para: {model}")
             except Exception as e:
@@ -291,25 +294,19 @@ def main():
             embeddings = HuggingFaceEmbeddings(model_name=EMBEDDINGS_MODEL)
             vectorstore = Chroma(persist_directory=VECTOR_DB_PATH, embedding_function=embeddings)
             llm = st.session_state.llm_instance
+            print(f'2 - LLM criada: {llm}')
 
-            # Configuração do combine_docs_chain
-            combine_docs_chain = load_qa_chain(llm=st.session_state.llm_instance, chain_type="stuff")
+            question_answer_chain = create_stuff_documents_chain(llm=llm, prompt=prompt)
+            print('Processamento da question_answer_chain OK')
+            rag_chain = create_retrieval_chain(vectorstore.as_retriever(),
+                                               question_answer_chain)
+            print('Processamento da create_retrieval_chain OK')
 
-            # Configuração da cadeia de recuperação
-            retrieval_chain = ConversationalRetrievalChain(
-                retriever=vectorstore.as_retriever(),
-                combine_docs_chain=combine_docs_chain,
-                question_generator=llm, ## Verificar
-                return_source_documents=True
-            )
-
-            # print(f"Histórico do chat: {st.session_state.memory.chat_memory}")
-
-            # Invocação da cadeia
-            response = retrieval_chain.invoke({
+            response = rag_chain.invoke.invoke({
                 "question": prompt,
                 "chat_history": st.session_state.memory.chat_memory or []
             })
+            print('Processamento do Response OK')
 
             # Acessa o retorno de forma segura
             if isinstance(response, dict) and 'answer' in response:
